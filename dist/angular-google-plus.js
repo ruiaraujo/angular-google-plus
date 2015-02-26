@@ -1,128 +1,166 @@
-/*! angular-google-plus - v0.1.2 2014-11-21 */
-/**
- * Options object available for module
- * options/services definition.
- * @type {Object}
- */
-var options = {};
-
+/*! angular-google-plus - v0.1.2 2015-03-13 */
 /**
  * googleplus module
  */
 angular.module("googleplus", []).provider("GooglePlus", [ function() {
     /**
+     * Options object available for module
+     * options/services definition.
+     * @type {Object}
+     */
+    var a = {};
+    /**
      * clientId
      * @type {Number}
      */
-    options.clientId = null;
-    this.setClientId = function(a) {
-        options.clientId = a;
-        return this;
-    };
-    this.getClientId = function() {
-        return options.clientId;
-    };
+    a.clientId = null;
+    /**
+     * ignoreAuto
+     * If true ignore auto logins
+     * @type {Boolean}
+     */
+    a.ignoreAuto = false;
+    /**
+     * cookiepolicy
+     * Cookie policy for sign in
+     * @type {Boolean}
+     */
+    a.cookiepolicy = "single_host_origin";
     /**
      * apiKey
      * @type {String}
      */
-    options.apiKey = null;
-    this.setApiKey = function(a) {
-        options.apiKey = a;
-        return this;
-    };
-    this.getApiKey = function() {
-        return options.apiKey;
-    };
+    a.apiKey = null;
     /**
      * Scopes
      * @default 'https://www.googleapis.com/auth/plus.login'
      * @type {Boolean}
      */
-    options.scopes = "https://www.googleapis.com/auth/plus.login";
-    this.setScopes = function(a) {
-        options.scopes = a;
+    a.scopes = "https://www.googleapis.com/auth/plus.login";
+    this.setClientId = function(b) {
+        a.clientId = b;
+        return this;
+    };
+    this.getClientId = function() {
+        return a.clientId;
+    };
+    this.setApiKey = function(b) {
+        a.apiKey = b;
+        return this;
+    };
+    this.getApiKey = function() {
+        return a.apiKey;
+    };
+    this.setScopes = function(b) {
+        a.scopes = b;
         return this;
     };
     this.getScopes = function() {
-        return options.scopes;
+        return a.scopes;
     };
     /**
      * Init Google Plus API
      */
-    this.init = function(a) {
-        angular.extend(options, a);
+    this.init = function(b) {
+        angular.extend(a, b);
     };
     /**
      * This defines the Google Plus Service on run.
      */
-    this.$get = [ "$q", "$rootScope", "$timeout", function(a, b, c) {
+    this.$get = [ "$q", "$rootScope", "$timeout", "$window", function(b, c, d, e) {
         /**
        * Define a deferred instance that will implement asynchronous calls
        * @type {Object}
        */
-        var d;
+        var f;
         /**
        * NgGooglePlus Class
        * @type {Class}
        */
-        var e = function() {};
-        e.prototype.login = function() {
-            d = a.defer();
-            gapi.auth.authorize({
-                client_id: options.clientId,
-                scope: options.scopes,
-                immediate: false
-            }, this.handleAuthResult);
-            return d.promise;
+        var g = function() {};
+        e.googlePlusHandleAuthResult = function(b) {
+            d(function() {
+                if (b && !b.error) {
+                    if (a.ignoreAuto && b.status.method === "AUTO") {
+                        gapi.auth.signOut();
+                        return;
+                    }
+                    f.resolve(b);
+                } else {
+                    if (b.error !== "user_signed_out") {
+                        f.reject("error");
+                    }
+                }
+            });
         };
-        e.prototype.checkAuth = function() {
+        /**
+       * Set to true when the Google script has been loaded.
+       * @type {boolean}
+       */
+        var h = false;
+        g.prototype.isReady = function() {
+            return h;
+        };
+        g.prototype.setReady = function(a) {
+            h = a ? true : false;
+        };
+        g.prototype.login = function() {
+            f = b.defer();
+            gapi.auth.signIn({
+                clientid: a.clientId,
+                scope: a.scopes,
+                cookiepolicy: a.cookiepolicy,
+                callback: "googlePlusHandleAuthResult"
+            });
+            return f.promise;
+        };
+        g.prototype.checkAuth = function() {
+            f = b.defer();
             gapi.auth.authorize({
-                client_id: options.clientId,
-                scope: options.scopes,
+                client_id: a.clientId,
+                scope: a.scopes,
                 immediate: true
-            }, this.handleAuthResult);
+            }, e.googlePlusHandleAuthResult);
+            return f.promise;
         };
-        e.prototype.handleClientLoad = function() {
-            gapi.client.setApiKey(options.apiKey);
+        g.prototype.handleClientLoad = function() {
+            gapi.client.setApiKey(a.apiKey);
             gapi.auth.init(function() {});
-            c(this.checkAuth, 1);
+            d(this.checkAuth, 1);
         };
-        e.prototype.handleAuthResult = function(a) {
-            if (a && !a.error) {
-                d.resolve(a);
-                b.$apply();
-            } else {
-                d.reject("error");
-            }
-        };
-        e.prototype.getUser = function() {
-            var c = a.defer();
+        g.prototype.getUser = function() {
+            var a = b.defer();
             gapi.client.load("oauth2", "v2", function() {
-                gapi.client.oauth2.userinfo.get().execute(function(a) {
-                    c.resolve(a);
-                    b.$apply();
+                gapi.client.oauth2.userinfo.get().execute(function(b) {
+                    a.resolve(b);
+                    c.$apply();
                 });
             });
-            return c.promise;
+            return a.promise;
         };
-        e.prototype.getToken = function() {
+        g.prototype.getToken = function() {
             return gapi.auth.getToken();
         };
-        e.prototype.setToken = function(a) {
+        g.prototype.setToken = function(a) {
             return gapi.auth.setToken(a);
         };
-        e.prototype.logout = function() {
+        g.prototype.logout = function() {
+            f = b.defer();
             gapi.auth.signOut();
-            return d.promise;
+            return f.promise;
         };
-        return new e();
+        return new g();
     } ];
-} ]).run([ function() {
-    var a = document.createElement("script");
-    a.type = "text/javascript";
-    a.async = true;
-    a.src = "https://apis.google.com/js/client.js";
-    var b = document.getElementsByTagName("script")[0];
-    b.parentNode.insertBefore(a, b);
+} ]).run([ "$window", "$timeout", "GooglePlus", function(a, b, c) {
+    a.ngGooglePlusLoaded = function() {
+        b(function() {
+            c.setReady(true);
+        });
+    };
+    var d = document.createElement("script");
+    d.type = "text/javascript";
+    d.async = true;
+    d.src = "https://apis.google.com/js/client.js?onload=ngGooglePlusLoaded";
+    var e = document.getElementsByTagName("script")[0];
+    e.parentNode.insertBefore(d, e);
 } ]);

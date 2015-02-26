@@ -3,6 +3,7 @@ describe('googlePlus Module specs', function () {
   // mock global gapi object
   window.gapi = {
     auth: {
+      signIn: jasmine.createSpy(),
       authorize: jasmine.createSpy(),
       signOut: jasmine.createSpy()
     }
@@ -29,21 +30,21 @@ describe('googlePlus Module specs', function () {
 
   describe('the provider api should provide', function () {
 
-    it("a working login", inject(function ($q) {
-
+    it("a working login", inject(function ($q, $window) {
+      expect($window.googlePlusHandleAuthResult).toBeDefined();
       expect(googlePlus.login().then).toEqual(jasmine.any(Function));
-
-      expect(window.gapi.auth.authorize).toHaveBeenCalledWith({
+      expect(window.gapi.auth.signIn).toHaveBeenCalledWith({
           client_id: GooglePlusProvider.getClientId(),
           scope: GooglePlusProvider.getScopes(),
-          immediate: false
-        }, googlePlus.handleAuthResult);
+          cookiepolicy: 'single_host_origin',
+          callback: 'googlePlusHandleAuthResult'
+        });
     }));
 
-    it("a working logout", inject(function ($q) {
+    it("a working logout", inject(function ($q, $window) {
       googlePlus.login();
       expect(googlePlus.logout());
-      expect(window.gapi.auth.signOut).toHaveBeenCalled();
+      expect($window.gapi.auth.signOut).toHaveBeenCalled();
     }));
 
     it('appId as default value', function () {
